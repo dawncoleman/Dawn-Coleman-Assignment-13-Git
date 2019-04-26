@@ -1,0 +1,133 @@
+---
+title: "Math Scores, SES, and School Type"
+output: html_notebook
+---
+
+```{r include = FALSE}
+
+# Load tidyverse and read in file.
+
+library(tidyverse)
+library(gridExtra)
+
+hsb2 <- read_csv("hsb2.csv")
+
+# Change the necessary factor variables from integers to factors.
+
+hsb2$female <- factor(hsb2$female, 
+                      levels = c(0, 1),
+                      labels = c("male", "female"))
+
+hsb2$ses <- factor(hsb2$ses, 
+                   levels = c(1, 2, 3),
+                   labels = c("low", "middle" ,"high"))
+
+hsb2$schtyp <- factor(hsb2$schtyp,
+                      levels = c(1, 2),
+                      labels = c("public", "private"))
+
+```
+
+### Introduction
+
+In order to study the relationship between math scores and socio-economic status (SES),
+while further examining if and how that relationship is moderated by school type,
+researchers explored data included in the High School and Beyond dataset.  This dataset
+includes demographic information and standardized test scores for 200 students. This 
+report focuses on three variables: math score, SES, and school type (public or private).
+
+
+### Analysis
+
+Among students in the sample, math scores ranged from `r min(hsb2$math)` to `r max(hsb2$math)`, 
+with a mean score of `r round(mean(hsb2$math), 0)`.  As seen in Figure 1, the mean math score for students 
+at private schools of `r round(mean(hsb2$math[hsb2$schtyp == "private"]), 0)` was higher than the mean
+score of `r round(mean(hsb2$math[hsb2$schtyp == "public"]), 0)` for students at public schools.  There was a 
+larger difference in scores based on socio-economic status with a mean of 
+`r round(mean(hsb2$math[hsb2$ses == "low"]), 0)` for low SES students, `r round(mean(hsb2$math[hsb2$ses == "middle"]), 0)` for middle SES students, and `r round(mean(hsb2$math[hsb2$ses == "high"]), 0)` for high SES students.  
+
+```{r, echo = FALSE, fig.align = 'center', out.width = '70%'}
+# Graphs of mean scores by school type and ses
+
+g1 <- ggplot(hsb2, aes(x = schtyp, y = math)) +
+    geom_boxplot(fill = "steelblue4")+
+    ylab("math scores\n")+
+    xlab("\nschool type")+
+    ggtitle("Math Scores by School Type")+
+    stat_summary(fun.y=mean, geom="point", shape=20, size=5, color = "red3", fill = "red3") +
+    theme_classic()+
+    theme(plot.title=element_text(family='', face='bold', colour='steelblue4', size=11))
+
+g2 <- ggplot(hsb2, aes(x = ses, y = math)) +
+    geom_boxplot(fill = "steelblue4")+
+    ylab(NULL)+
+    xlab("\nSES")+
+    ggtitle("Math Scores by SES")+
+    stat_summary(fun.y=mean, geom="point", shape=20, size=5, color="red3", fill="red3") +
+    theme_classic()+
+    theme(plot.title=element_text(family='', face='bold', colour='steelblue4', size=11))
+
+grid.arrange(g1, g2, 
+             nrow=1, 
+             top = "Figure 1: Math Scores by School Type and SES \n")
+
+```
+
+The interaction plot in Figure 2 shows that, in our data, the relationship between SES and math scores does depend slightly on school type.  While low SES and high SES students have slightly higher math scores at public schools, middle SES students have higher math scores at private schools 
+(`r round(mean(hsb2$math[hsb2$schtyp == "private" & hsb2$ses == "middle"]), 0)` 
+compared to `r round(mean(hsb2$math[hsb2$schtyp == "public" & hsb2$ses == "middle"]), 0)` points).  
+
+
+```{r, echo = FALSE, fig.align = 'center', out.width = '70%'}
+
+# Graphing to see if there's an interaction
+
+hsb2 %>% 
+    ggplot(aes(x = ses, y = math, color = schtyp, group = schtyp))+
+    stat_summary(fun.y = mean, geom = "point", size = 3)+
+    stat_summary(fun.y = mean, geom = "line", linetype = "solid", size = 1.5)+
+    ylim(0, 75)+
+    theme(legend.position = "top", 
+          legend.title = element_blank(), 
+          legend.spacing.x = unit(0.5, 'cm'))+
+    scale_color_manual(values = c("steelblue", "red3")) +
+    labs(x = "\nSES",
+         y = "mean math score\n",
+         title = "Figure 2: The Relationship between SES, School Type, and Math Scores")
+
+```
+
+
+```{r, echo = FALSE}
+
+model <- hsb2$math ~ hsb2$schtyp * hsb2$ses
+anova.table <- anova(aov(model))
+
+```
+
+However, the ANOVA results shown in Table 1 do not suggest that there is an interaction (p = `r round(anova.table$"Pr(>F)"[3], 4)`) so we are unable to infer the relationship seen in our sample to the larger population of students.  However, there does appear to be a relationship between SES and math scores that can be inferred to the population (p = `r format(round(anova.table$"Pr(>F)"[2], 4), scientific = FALSE)`).
+
+```{r, echo = FALSE}
+
+knitr::kable(round(anova.table, 3), format = "pandoc", caption = "Table 1: ANOVA table")
+
+```
+
+
+### Conclusion
+
+Based on our sample data, the mean math score for private school students was 
+`r round(mean(hsb2$math[hsb2$schtyp == "private"]) - mean(hsb2$math[hsb2$schtyp == "public"]), 1)`
+points higher than the mean math score for public school students.  Math scores also were 
+progressively higher based on SES; the mean math score for high SES students was 
+`r round(mean(hsb2$math[hsb2$ses == "high"]) - mean(hsb2$math[hsb2$ses == "low"]), 1)`
+points higher than the mean math score for low SES students.  There also appeared to be 
+an interaction between school type and SES in that the relationship between SES and 
+math scores depended on SES.  Specifically, although the mean math scores were slightly 
+higher at public schools for both low and high SES students, the mean math score for 
+middle SES students was `r round(mean(hsb2$math[hsb2$schtyp == "private" & hsb2$ses == "middle"]) - mean(hsb2$math[hsb2$schtyp == "public" & hsb2$ses == "middle"]), 1)` points higher 
+at private schools.  Because middle SES students were overrepresented 
+in the dataset, the aggregated results suggest that private school students outperform
+public school students.  However, inferential analysis suggests that only our estimate of
+the relationship between SES and math scores is stable enough to be inferred to the 
+population represented by our sample.  
